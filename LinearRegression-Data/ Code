@@ -1,0 +1,47 @@
+
+import org.apache.log4j.Logger
+import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.mllib.regression.LinearRegressionModel
+import org.apache.spark.mllib.regression.LinearRegressionWithSGD
+object ChimpLinear {
+
+  def main(args: Array[String]): Unit ={
+
+    System.setProperty("hadoop.home.dir","C:\\Users\\Nick\\Desktop\\hadoop");
+
+    val sparkConfigure = new SparkConfigure().setAppName("Chimpz").setMaster("local[*]")
+
+    val sc=new SparkContext(sparkConfigure)
+
+    Logger.getLogger("org").setLevel(Level.OFF);
+    Logger.getLogger("nsig").setLevel(Level.OFF);
+    val data = sc.textFile("Desktop\\chimp.data")
+    val parsedData = data.map {line =>
+      val parts = line.split(',')
+      LabeledPoint(parts(0).toDouble, Vectors.dense(parts(1).split(' ').map(_.toDouble)))
+    }.cache()
+
+    parsedData.take(1).foreach(f=>println(f))
+    val Array(training, test) = parsedData.randomSplit(Array(0.90, 0.10))
+
+    val numIterations = 6
+    val stepSize = 0.001
+    val model = ChimpLinear.train(training, numIterations, stepSize)
+    val valuesAndPred = training.map { point =>
+      val prediction = model.predict(point.features)
+      (point.label, prediction)
+    }
+    val MSE = valuesAndPreds.map{ case(v, p) => math.pow((v - p), 2) }.mean()
+    println("Trained Mean Squared Error = " + MSE)
+    val valuesAndPreds2 = test.map { point =>
+      val prediction = model.predict(point.features)
+      (point.label, prediction)
+    }
+    val MSE2 = valuesAndPreds2.map{ case(v, p) => math.pow((v - p), 2) }.mean()
+    println("Tst Mean Squared Error = " + MSE2)
+    model.save(sc, "Desktop\\Chimplinear")
+    val sameModel = LinearRegressionModel.load(sc, "Desktop\\Chimplinear")
+  }
+
+}
